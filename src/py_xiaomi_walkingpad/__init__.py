@@ -1,0 +1,2 @@
+"""WalkingPad CLI application package."""
+

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py-xiaomi-walkingpad"
+version = "0.1.0"
+description = "Async-ready CLI and TUI controller for WalkingPad devices via python-miio"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "behesse" }
+]
+dependencies = [
+  "python-miio>=0.5.12",
+  "typer>=0.12.5",
+  "textual>=0.80.0",
+  "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.6.0",
+  "mypy>=1.11.0",
+]
+
+[project.scripts]
+py-xiaomi-walkingpad = "py_xiaomi_walkingpad.main:run"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore:'MultiCommand' is deprecated and will be removed in Click 9.0.*:DeprecationWarning:miio\\.click_common",
+  "ignore:datetime\\.datetime\\.utcnow\\(\\) is deprecated.*:DeprecationWarning:miio\\.protocol",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
