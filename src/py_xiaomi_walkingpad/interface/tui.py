@@ -10,8 +10,9 @@ from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Input, Log, Select, Static
 
-from py_xiaomi_walkingpad.app.container import AppContainer
-from py_xiaomi_walkingpad.domain.models import PadMode, PadStatus
+from py_xiaomi_walkingpad.service import AsyncWalkingPadService
+from py_xiaomi_walkingpad.interface.config import AppConfig
+from py_xiaomi_walkingpad.types.models import PadMode, PadStatus
 
 
 def _fmt_time(value: timedelta | None) -> str:
@@ -71,10 +72,14 @@ class WalkingPadTuiApp(App[None]):
 
     status_text: reactive[str] = reactive("No data yet")
 
-    def __init__(self, container_factory: Callable[[], AppContainer]) -> None:
+    def __init__(
+        self,
+        service_factory: Callable[[], tuple[AppConfig, AsyncWalkingPadService]],
+    ) -> None:
         super().__init__()
-        self._container_factory = container_factory
-        self._container: AppContainer | None = None
+        self._service_factory = service_factory
+        self._config: AppConfig | None = None
+        self._service: AsyncWalkingPadService | None = None
         self._event_task: asyncio.Task[None] | None = None
 
     def compose(self) -> ComposeResult:
@@ -107,15 +112,15 @@ class WalkingPadTuiApp(App[None]):
         yield Footer()
 
     async def on_mount(self) -> None:
-        self._container = self._container_factory()
-        await self._container.service.start_polling(self._container.config.polling_interval_seconds)
+        self._config, self._service = self._service_factory()
+        await self._service.start_polling(self._config.polling_interval_seconds)
         self._event_task = asyncio.create_task(self._consume_events())
         asyncio.create_task(self._refresh_status())
         self.query_one("#log", Log).write_line("Started polling")
 
     async def on_unmount(self) -> None:
-        if self._container is not None:
-            await self._container.service.stop_polling()
+        if self._service is not None:
+            await self._service.stop_polling()
         if self._event_task is not None:
             self._event_task.cancel()
             try:
@@ -142,21 +147,21 @@ class WalkingPadTuiApp(App[None]):
         return "\n".join(f"{l:<{width}}{r}" for l, r in zip(left, right, strict=False))
 
     async def _refresh_status(self) -> None:
-        if not self._container:
+        if not self._service:
             return
         log = self.query_one("#log", Log)
         try:
-            status = await self._container.service.get_status(quick=False)
+            status = await self._service.get_status(quick=False)
             self.status_text = self._render_status(status)
             self.query_one("#status", Static).update(self.status_text)
         except Exception as exc:  # noqa: BLE001
             log.write_line(f"refresh: ERROR {exc}")
 
     async def _consume_events(self) -> None:
-        if not self._container:
+        if not self._service:
             return
         log = self.query_one("#log", Log)
-        async for event in self._container.service.event_stream():
+        async for event in self._service.event_stream():
             name = type(event).__name__
             log.write_line(f"event: {name}")
             if hasattr(event, "wait_ms") and hasattr(event, "run_ms") and hasattr(event, "total_ms"):
@@ -187,15 +192,15 @@ class WalkingPadTuiApp(App[None]):
             log.write_line(f"{label}: ERROR {exc}")
 
     async def _adjust_speed(self, delta: float) -> None:
-        if not self._container:
+        if not self._service:
             return
-        status = self._container.service.latest_status
+        status = self._service.latest_status
         if status is None or status.speed_kmh is None:
-            status = await self._container.service.get_status(quick=False)
+            status = await self._service.get_status(quick=False)
 
         base = status.speed_kmh or 0.0
         new_speed = max(0.0, min(6.0, round(base + delta, 1)))
-        await self._run_action("set_speed", self._container.service.set_speed(new_speed))
+        await self._run_action("set_speed", self._service.set_speed(new_speed))
 
     @on(Button.Pressed, "#btn-refresh")
     async def _btn_refresh(self) -> None:
@@ -203,24 +208,24 @@ class WalkingPadTuiApp(App[None]):
 
     @on(Button.Pressed, "#btn-start")
     async def _btn_start(self) -> None:
-        await self._run_action("start", self._container.service.start())
+        await self._run_action("start", self._service.start())
 
     @on(Button.Pressed, "#btn-stop")
     async def _btn_stop(self) -> None:
-        await self._run_action("stop", self._container.service.stop())
+        await self._run_action("stop", self._service.stop())
 
     @on(Button.Pressed, "#btn-on")
     async def _btn_on(self) -> None:
-        await self._run_action("power_on", self._container.service.power_on())
+        await self._run_action("power_on", self._service.power_on())
 
     @on(Button.Pressed, "#btn-off")
     async def _btn_off(self) -> None:
-        await self._run_action("power_off", self._container.service.power_off())
+        await self._run_action("power_off", self._service.power_off())
 
     @on(Button.Pressed, "#btn-set-speed")
     async def _btn_set_speed(self) -> None:
         value = self.query_one("#speed-input", Input).value.strip()
-        await self._run_action("set_speed", self._container.service.set_speed(float(value)))
+        await self._run_action("set_speed", self._service.set_speed(float(value)))
 
     @on(Input.Submitted, "#speed-input")
     async def _submit_speed_input(self) -> None:
@@ -239,7 +244,7 @@ class WalkingPadTuiApp(App[None]):
         value = self.query_one("#start-speed-input", Input).value.strip()
         await self._run_action(
             "set_start_speed",
-            self._container.service.set_start_speed(float(value)),
+            self._service.set_start_speed(float(value)),
         )
 
     @on(Input.Submitted, "#start-speed-input")
@@ -249,7 +254,7 @@ class WalkingPadTuiApp(App[None]):
     @on(Button.Pressed, "#btn-set-mode")
     async def _btn_set_mode(self) -> None:
         value = str(self.query_one("#mode-select", Select).value)
-        await self._run_action("set_mode", self._container.service.set_mode(PadMode(value)))
+        await self._run_action("set_mode", self._service.set_mode(PadMode(value)))
 
     async def action_refresh(self) -> None:
         await self._refresh_status()

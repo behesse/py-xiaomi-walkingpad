@@ -7,8 +7,8 @@ from datetime import timedelta
 
 import typer
 
-from py_xiaomi_walkingpad.app.container import build_container
-from py_xiaomi_walkingpad.domain.models import PadMode, PadSensitivity, PadStatus
+from py_xiaomi_walkingpad.interface.factory import create_service
+from py_xiaomi_walkingpad.types.models import PadMode, PadSensitivity, PadStatus
 from py_xiaomi_walkingpad.interface.tui import WalkingPadTuiApp
 
 app = typer.Typer(help="WalkingPad CLI")
@@ -27,8 +27,8 @@ def _status_to_dict(status: PadStatus) -> dict[str, object]:
 @app.command("status")
 def status(quick: bool = typer.Option(False, "--quick", help="Use quick status read")) -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.get_status(quick=quick)
+        _, service = create_service()
+        result = await service.get_status(quick=quick)
         typer.echo(json.dumps(_status_to_dict(result), indent=2))
 
     asyncio.run(_run())
@@ -37,8 +37,8 @@ def status(quick: bool = typer.Option(False, "--quick", help="Use quick status r
 @app.command("start")
 def start() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.start()
+        _, service = create_service()
+        result = await service.start()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -47,8 +47,8 @@ def start() -> None:
 @app.command("stop")
 def stop() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.stop()
+        _, service = create_service()
+        result = await service.stop()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -57,8 +57,8 @@ def stop() -> None:
 @app.command("power-on")
 def power_on() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.power_on()
+        _, service = create_service()
+        result = await service.power_on()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -67,8 +67,8 @@ def power_on() -> None:
 @app.command("power-off")
 def power_off() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.power_off()
+        _, service = create_service()
+        result = await service.power_off()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -77,8 +77,8 @@ def power_off() -> None:
 @app.command("lock")
 def lock() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.lock()
+        _, service = create_service()
+        result = await service.lock()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -87,8 +87,8 @@ def lock() -> None:
 @app.command("unlock")
 def unlock() -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.unlock()
+        _, service = create_service()
+        result = await service.unlock()
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -97,8 +97,8 @@ def unlock() -> None:
 @app.command("set-speed")
 def set_speed(speed: float = typer.Argument(..., help="Speed in km/h (0..6)")) -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.set_speed(speed)
+        _, service = create_service()
+        result = await service.set_speed(speed)
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -107,8 +107,8 @@ def set_speed(speed: float = typer.Argument(..., help="Speed in km/h (0..6)")) -
 @app.command("set-start-speed")
 def set_start_speed(speed: float = typer.Argument(..., help="Start speed in km/h (0..6)")) -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.set_start_speed(speed)
+        _, service = create_service()
+        result = await service.set_start_speed(speed)
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -117,8 +117,8 @@ def set_start_speed(speed: float = typer.Argument(..., help="Start speed in km/h
 @app.command("set-mode")
 def set_mode(mode: PadMode = typer.Argument(..., help="auto|manual|off")) -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.set_mode(mode)
+        _, service = create_service()
+        result = await service.set_mode(mode)
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -127,8 +127,8 @@ def set_mode(mode: PadMode = typer.Argument(..., help="auto|manual|off")) -> Non
 @app.command("set-sensitivity")
 def set_sensitivity(sensitivity: PadSensitivity = typer.Argument(..., help="high|medium|low")) -> None:
     async def _run() -> None:
-        container = build_container()
-        result = await container.service.set_sensitivity(sensitivity)
+        _, service = create_service()
+        result = await service.set_sensitivity(sensitivity)
         typer.echo(result.message)
 
     asyncio.run(_run())
@@ -136,5 +136,4 @@ def set_sensitivity(sensitivity: PadSensitivity = typer.Argument(..., help="high
 
 @app.command("tui")
 def tui() -> None:
-    WalkingPadTuiApp(build_container).run()
-
+    WalkingPadTuiApp(create_service).run()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from py_xiaomi_walkingpad.domain.models import CommandResult, PadStatus
+from py_xiaomi_walkingpad.types.models import CommandResult, PadStatus
 
 
 @dataclass(slots=True)

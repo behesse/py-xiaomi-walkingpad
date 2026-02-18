@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
-from py_xiaomi_walkingpad.domain.errors import ConfigurationError
+from py_xiaomi_walkingpad.types.errors import ConfigurationError
 
 
 @dataclass(slots=True)

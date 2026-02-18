@@ -12,7 +12,7 @@ The codebase is split into reusable layers so future interfaces (for example a R
 - Async-ready application service on top of synchronous `python-miio`
 - Device command support for start/stop, power, lock, speed, start speed, mode, and sensitivity
 - Live status polling and event stream for interface consumers
-- Keyboard-only TUI controls (no mouse required)
+- Keyboard-only TUI controls (no mouse required), focused on core walking-pad actions
 - Built-in timing diagnostics for command latency analysis
 
 ## Device compatibility
@@ -78,6 +78,12 @@ Core shortcuts:
 - `s` — start
 - `x` — stop
 - `+` / `-` — speed adjust in 0.5 km/h steps
+
+TUI notes:
+
+- Speed inputs can be submitted with `Enter` or via set buttons.
+- TUI intentionally hides lock/unlock and sensitivity controls to keep the surface compact.
+
 ## Performance diagnostics
 
 The TUI log prints timing entries:
@@ -94,11 +100,11 @@ This helps separate app-side contention from device/network delay.
 
 ## Architecture overview
 
-- Infra layer: [`WalkingPadAdapter`](src/py_xiaomi_walkingpad/infra/miio_adapter.py), config loading
-- Application layer: [`AsyncWalkingPadService`](src/py_xiaomi_walkingpad/app/service.py), event bus
-- Interface layer: CLI + TUI
+- Backend/core: [`WalkingPadAdapter`](src/py_xiaomi_walkingpad/miio_adapter.py), [`AsyncWalkingPadService`](src/py_xiaomi_walkingpad/service.py), [`AsyncEventBus`](src/py_xiaomi_walkingpad/event_bus.py)
+- Shared types/events/errors: [`types/`](src/py_xiaomi_walkingpad/types)
+- Interface layer: CLI + TUI + interface-side composition/factory in [`interface/factory.py`](src/py_xiaomi_walkingpad/interface/factory.py) and config loading in [`interface/config.py`](src/py_xiaomi_walkingpad/interface/config.py)
 
-The service contract lives in [`contracts.py`](src/py_xiaomi_walkingpad/domain/contracts.py), enabling additional interfaces without coupling to TUI internals.
+`AsyncWalkingPadService` in [`service.py`](src/py_xiaomi_walkingpad/service.py) is the single backend API consumed by interfaces.
 
 ## Testing
 

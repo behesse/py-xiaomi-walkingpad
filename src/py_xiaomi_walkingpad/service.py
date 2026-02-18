@@ -5,19 +5,18 @@ from collections.abc import AsyncIterator, Callable
 from datetime import datetime, UTC
 from time import perf_counter
 
-from py_xiaomi_walkingpad.app.event_bus import AsyncEventBus
-from py_xiaomi_walkingpad.domain.contracts import ServiceCapabilities, WalkingPadService
-from py_xiaomi_walkingpad.domain.events import (
+from py_xiaomi_walkingpad.event_bus import AsyncEventBus
+from py_xiaomi_walkingpad.types.events import (
     CommandExecutedEvent,
     ErrorEvent,
     OperationTimingEvent,
     StatusUpdatedEvent,
 )
-from py_xiaomi_walkingpad.domain.models import CommandResult, PadMode, PadSensitivity, PadStatus
-from py_xiaomi_walkingpad.infra.miio_adapter import WalkingPadAdapter
+from py_xiaomi_walkingpad.types.models import CommandResult, PadMode, PadSensitivity, PadStatus
+from py_xiaomi_walkingpad.miio_adapter import WalkingPadAdapter
 
 
-class AsyncWalkingPadService(WalkingPadService):
+class AsyncWalkingPadService:
     """Async-facing service wrapping synchronous miio operations."""
 
     def __init__(self, adapter: WalkingPadAdapter, event_bus: AsyncEventBus | None = None) -> None:
@@ -68,16 +67,6 @@ class AsyncWalkingPadService(WalkingPadService):
         return await self._run_command(
             lambda: self._adapter.set_sensitivity(sensitivity),
             "set_sensitivity",
-        )
-
-    async def get_capabilities(self) -> ServiceCapabilities:
-        return ServiceCapabilities(
-            supported_models=self._adapter.supported_models,
-            model_hint=self._adapter.model,
-            supports_power=True,
-            supports_lock=True,
-            supports_mode=True,
-            supports_sensitivity=True,
         )
 
     async def event_stream(self) -> AsyncIterator[object]:
