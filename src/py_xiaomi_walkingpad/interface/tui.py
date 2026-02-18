@@ -11,7 +11,7 @@ from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Input, Log, Select, Static
 
 from py_xiaomi_walkingpad.app.container import AppContainer
-from py_xiaomi_walkingpad.domain.models import PadMode, PadSensitivity, PadStatus
+from py_xiaomi_walkingpad.domain.models import PadMode, PadStatus
 
 
 def _fmt_time(value: timedelta | None) -> str:
@@ -24,6 +24,12 @@ def _fmt_time(value: timedelta | None) -> str:
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
+def _to_kcal(value: int | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value / 1000:.2f}"
+
+
 class WalkingPadTuiApp(App[None]):
     CSS = """
     #root {
@@ -31,12 +37,12 @@ class WalkingPadTuiApp(App[None]):
         padding: 1;
     }
     #status {
-        height: 12;
+        height: 9;
         border: round $accent;
         padding: 1;
     }
     #actions {
-        height: 14;
+        height: 12;
         border: round $secondary;
         padding: 1;
     }
@@ -83,8 +89,6 @@ class WalkingPadTuiApp(App[None]):
                     yield Button("Stop", id="btn-stop", variant="warning")
                     yield Button("Power On", id="btn-on")
                     yield Button("Power Off", id="btn-off")
-                    yield Button("Lock", id="btn-lock")
-                    yield Button("Unlock", id="btn-unlock")
                 with Horizontal(classes="row"):
                     yield Button("Speed -0.5", id="btn-speed-down")
                     yield Button("Speed +0.5", id="btn-speed-up")
@@ -99,12 +103,6 @@ class WalkingPadTuiApp(App[None]):
                         id="mode-select",
                     )
                     yield Button("Set Mode", id="btn-set-mode")
-                    yield Select(
-                        options=[("high", "high"), ("medium", "medium"), ("low", "low")],
-                        value="medium",
-                        id="sensitivity-select",
-                    )
-                    yield Button("Set Sensitivity", id="btn-set-sensitivity")
             yield Log(id="log", highlight=True)
         yield Footer()
 
@@ -126,18 +124,22 @@ class WalkingPadTuiApp(App[None]):
                 pass
 
     def _render_status(self, status: PadStatus) -> str:
-        return (
-            f"Power: {status.power}\n"
-            f"On: {status.is_on}\n"
-            f"Mode: {status.mode.value if status.mode else '-'}\n"
-            f"Speed: {status.speed_kmh}\n"
-            f"Start speed: {status.start_speed_kmh}\n"
-            f"Sensitivity: {status.sensitivity.value if status.sensitivity else '-'}\n"
-            f"Steps: {status.step_count}\n"
-            f"Distance: {status.distance_m} m\n"
-            f"Calories: {status.calories}\n"
-            f"Time: {_fmt_time(status.walking_time)}"
-        )
+        left = [
+            f"Power: {status.power}",
+            f"On: {status.is_on}",
+            f"Mode: {status.mode.value if status.mode else '-'}",
+            f"Speed: {status.speed_kmh}",
+            f"Start speed: {status.start_speed_kmh}",
+        ]
+        right = [
+            f"Steps: {status.step_count}",
+            f"Distance: {status.distance_m} m",
+            f"Kcal: {_to_kcal(status.calories)}",
+            f"Walking time: {_fmt_time(status.walking_time)}",
+            f"",
+        ]
+        width = max(len(x) for x in left) + 4
+        return "\n".join(f"{l:<{width}}{r}" for l, r in zip(left, right, strict=False))
 
     async def _refresh_status(self) -> None:
         if not self._container:
@@ -215,18 +217,14 @@ class WalkingPadTuiApp(App[None]):
     async def _btn_off(self) -> None:
         await self._run_action("power_off", self._container.service.power_off())
 
-    @on(Button.Pressed, "#btn-lock")
-    async def _btn_lock(self) -> None:
-        await self._run_action("lock", self._container.service.lock())
-
-    @on(Button.Pressed, "#btn-unlock")
-    async def _btn_unlock(self) -> None:
-        await self._run_action("unlock", self._container.service.unlock())
-
     @on(Button.Pressed, "#btn-set-speed")
     async def _btn_set_speed(self) -> None:
         value = self.query_one("#speed-input", Input).value.strip()
         await self._run_action("set_speed", self._container.service.set_speed(float(value)))
+
+    @on(Input.Submitted, "#speed-input")
+    async def _submit_speed_input(self) -> None:
+        await self._btn_set_speed()
 
     @on(Button.Pressed, "#btn-speed-down")
     async def _btn_speed_down(self) -> None:
@@ -244,18 +242,14 @@ class WalkingPadTuiApp(App[None]):
             self._container.service.set_start_speed(float(value)),
         )
 
+    @on(Input.Submitted, "#start-speed-input")
+    async def _submit_start_speed_input(self) -> None:
+        await self._btn_set_start_speed()
+
     @on(Button.Pressed, "#btn-set-mode")
     async def _btn_set_mode(self) -> None:
         value = str(self.query_one("#mode-select", Select).value)
         await self._run_action("set_mode", self._container.service.set_mode(PadMode(value)))
-
-    @on(Button.Pressed, "#btn-set-sensitivity")
-    async def _btn_set_sensitivity(self) -> None:
-        value = str(self.query_one("#sensitivity-select", Select).value)
-        await self._run_action(
-            "set_sensitivity",
-            self._container.service.set_sensitivity(PadSensitivity(value)),
-        )
 
     async def action_refresh(self) -> None:
         await self._refresh_status()

@@ -78,9 +78,6 @@ Core shortcuts:
 - `s` — start
 - `x` — stop
 - `+` / `-` — speed adjust in 0.5 km/h steps
-
-Speed control is available through both buttons and keyboard shortcuts.
-
 ## Performance diagnostics
 
 The TUI log prints timing entries:
