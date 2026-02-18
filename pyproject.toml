@@ -7,6 +7,7 @@ name = "py-xiaomi-walkingpad"
 version = "0.1.0"
 description = "Async-ready CLI and TUI controller for WalkingPad devices via python-miio"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 authors = [
   { name = "behesse" }
